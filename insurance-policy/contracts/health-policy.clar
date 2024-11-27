@@ -17,6 +17,8 @@
 (define-constant ERR_INVALID_DURATION (err u1012))
 (define-constant ERR_POLICY_LIMIT_REACHED (err u1013))
 (define-constant ERR_INVALID_PREMIUM (err u1014))
+(define-constant ERR_INVALID_INSURANCE_TYPE (err u1015))
+(define-constant ERR_INVALID_CLAIM_DESCRIPTION (err u1016))
 
 ;; Contract Owner
 (define-constant CONTRACT_OWNER tx-sender)
@@ -100,6 +102,18 @@
     )
 )
 
+(define-private (verify-insurance-type (insurance-type (string-ascii 64)))
+    (let ((length (len insurance-type)))
+        (and (> length u0) (<= length u64))
+    )
+)
+
+(define-private (verify-claim-description (claim-description (string-ascii 256)))
+    (let ((length (len claim-description)))
+        (and (> length u0) (<= length u256))
+    )
+)
+
 ;; Read-Only Functions
 (define-read-only (get-insurer-information (insurer-address principal))
     (map-get? registered-insurers insurer-address)
@@ -168,6 +182,7 @@
     (asserts! (verify-premium-amount monthly-premium) ERR_INVALID_PREMIUM)
     (asserts! (verify-coverage-amount coverage-amount) ERR_INVALID_AMOUNT)
     (asserts! (>= max-duration min-duration) ERR_INVALID_DURATION)
+    (asserts! (verify-insurance-type insurance-type) ERR_INVALID_INSURANCE_TYPE)
     
     (map-set insurance-policies new-policy-id
         {
@@ -239,6 +254,7 @@
     (asserts! (get is-policy-active policyholder-data) ERR_NOT_INSURED)
     (asserts! (<= claim-amount (get total-coverage-amount policyholder-data)) ERR_INVALID_AMOUNT)
     (asserts! (<= current-block-height (get policy-end-block policyholder-data)) ERR_POLICY_EXPIRED)
+    (asserts! (verify-claim-description claim-description) ERR_INVALID_CLAIM_DESCRIPTION)
     
     ;; Create new claim
     (map-set insurance-claims new-claim-id
